@@ -1,0 +1,46 @@
+name: Build UHD730 VirtIO Driver
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Install WDK
+        shell: powershell
+        run: |
+          winget install --id Microsoft.WindowsWDK.10.0.26100 --silent --accept-package-agreements --accept-source-agreements
+
+      - name: Build viogpu
+        shell: cmd
+        run: |
+          call buildall.bat Win10 amd64 viogpu
+
+      - name: Find output
+        shell: powershell
+        run: |
+          Get-ChildItem -Recurse -Filter viogpudo.sys
+          Get-ChildItem -Recurse -Filter viogpudo.inf
+
+      - name: Collect driver
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force artifact
+          Copy-Item viogpu\Install\Win10\amd64\* artifact\ -Recurse -Force
+
+      - name: Upload driver
+        uses: actions/upload-artifact@v4
+        with:
+          name: Intel-UHD730-VirtIO-Win10-x64
+          path: artifact

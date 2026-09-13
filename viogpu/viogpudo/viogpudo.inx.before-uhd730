@@ -34,7 +34,7 @@ viogpudo.sys = 1,,
 %VENDOR%=VioGpu,NT$ARCH$
 
 [VioGpu.NT$ARCH$]
-%VioGpuDod.DeviceDesc% = VioGpuDod_Inst, PCI\VEN_8086&DEV_4682
+%VioGpuDod.DeviceDesc% = VioGpuDod_Inst, PCI\VEN_1AF4&DEV_1050&SUBSYS_1100_INX_SUBSYS_VENDOR_ID&REV_01, PCI\VEN_1AF4&DEV_1050
 
 [VioGpuDod_Files_Driver]
 viogpudo.sys,,,2
@@ -85,7 +85,7 @@ HKR, "Interrupt Management\Affinity Policy", DevicePriority, 0x00010001, 3
 
 ;  *******Localizable Strings*******
 diskId1 = "INX_PREFIX_VENDORVirtIO GPU controller Installation Disk"
-VioGpuDod.DeviceDesc = "Intel(R) UHD Graphics 730"
+VioGpuDod.DeviceDesc = "INX_PREFIX_VENDORVirtIO GPU DOD controller"
 VENDOR = "INX_COMPANY"
 
 ;  *******Non Localizable Strings*******
