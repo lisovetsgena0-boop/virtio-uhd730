@@ -18,12 +18,14 @@ jobs:
         shell: powershell
         run: |
           $vsInstaller = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe"
+
           & $vsInstaller modify `
             --installPath "C:\Program Files\Microsoft Visual Studio\2022\Enterprise" `
             --add Component.Microsoft.Windows.DriverKit.BuildTools `
             --add Microsoft.VisualStudio.Component.Windows11SDK.26100 `
             --quiet `
             --norestart
+
           if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) {
             exit $LASTEXITCODE
           }
@@ -38,34 +40,54 @@ jobs:
         run: |
           call build\build.bat viogpu\viogpu.sln "Win10" amd64
 
-      - name: Find driver
+      - name: Locate matching driver package
         shell: powershell
         run: |
-          Get-ChildItem -Recurse -Filter viogpudo.sys
-          Get-ChildItem -Recurse -Filter viogpudo.inf
-          Get-ChildItem -Recurse -Filter viogpudo.cat
+          $sys = Get-ChildItem -Recurse -Filter viogpudo.sys |
+                 Where-Object { $_.FullName -match 'amd64|x64' } |
+                 Select-Object -First 1
 
-      - name: Collect UHD730 driver
-        shell: powershell
-        run: |
+          if (-not $sys) {
+            throw "viogpudo.sys not found"
+          }
+
+          $dir = $sys.Directory.FullName
+
+          Write-Host "Driver directory:"
+          Write-Host $dir
+
+          $inf = Join-Path $dir "viogpudo.inf"
+          $cat = Join-Path $dir "viogpudo.cat"
+
+          if (-not (Test-Path $inf)) {
+            throw "Matching viogpudo.inf not found in $dir"
+          }
+
+          if (-not (Test-Path $cat)) {
+            throw "Matching viogpudo.cat not found in $dir"
+          }
+
           New-Item -ItemType Directory -Force artifact
 
-          $sys = Get-ChildItem -Recurse -Filter viogpudo.sys | Select-Object -First 1
-          $inf = Get-ChildItem -Recurse -Filter viogpudo.inf | Select-Object -First 1
-          $cat = Get-ChildItem -Recurse -Filter viogpudo.cat | Select-Object -First 1
+          Copy-Item $sys.FullName artifact\viogpudo.sys
+          Copy-Item $inf artifact\viogpudo.inf
+          Copy-Item $cat artifact\viogpudo.cat
 
-          if (-not $sys) { throw "viogpudo.sys not found" }
-          if (-not $inf) { throw "viogpudo.inf not found" }
+          Get-ChildItem artifact
 
-          Copy-Item $sys.FullName artifact\
-          Copy-Item $inf.FullName artifact\
+      - name: Verify INF
+        shell: powershell
+        run: |
+          Get-Content artifact\viogpudo.inf
 
-          if ($cat) {
-            Copy-Item $cat.FullName artifact\
+          if (-not (Select-String `
+              -Path artifact\viogpudo.inf `
+              -Pattern 'PCI\\VEN_8086&DEV_4682')) {
+            throw "8086:4682 missing from INF"
           }
 
       - name: Upload driver
         uses: actions/upload-artifact@v4
         with:
-          name: Intel-UHD730-VirtIO-Win10-x64
+          name: Intel-UHD730-VirtIO-Win10-x64-fixed
           path: artifact
