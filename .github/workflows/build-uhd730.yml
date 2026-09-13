@@ -1,4 +1,4 @@
-name: Build UHD730 VirtIO Driver
+name: Build Signed UHD730 VirtIO Driver
 
 on:
   workflow_dispatch:
@@ -35,12 +35,12 @@ jobs:
         with:
           msbuild-architecture: x64
 
-      - name: Build viogpu Win10 x64
+      - name: Build viogpu
         shell: cmd
         run: |
           call build\build.bat viogpu\viogpu.sln "Win10" amd64
 
-      - name: Locate matching driver package
+      - name: Sign UHD730 driver package
         shell: powershell
         run: |
           $sys = Get-ChildItem -Recurse -Filter viogpudo.sys |
@@ -52,42 +52,115 @@ jobs:
           }
 
           $dir = $sys.Directory.FullName
-
-          Write-Host "Driver directory:"
-          Write-Host $dir
-
           $inf = Join-Path $dir "viogpudo.inf"
           $cat = Join-Path $dir "viogpudo.cat"
 
           if (-not (Test-Path $inf)) {
-            throw "Matching viogpudo.inf not found in $dir"
+            throw "viogpudo.inf not found"
+          }
+
+          Write-Host "Driver directory: $dir"
+
+          $signtool = Get-ChildItem `
+            "C:\Program Files (x86)\Windows Kits\10\bin" `
+            -Recurse -Filter signtool.exe |
+            Where-Object { $_.FullName -match '\\x64\\signtool.exe$' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+
+          $inf2cat = Get-ChildItem `
+            "C:\Program Files (x86)\Windows Kits\10\bin" `
+            -Recurse -Filter Inf2Cat.exe |
+            Where-Object { $_.FullName -match '\\x64\\Inf2Cat.exe$' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+
+          if (-not $signtool) {
+            throw "signtool.exe not found"
+          }
+
+          if (-not $inf2cat) {
+            throw "Inf2Cat.exe not found"
+          }
+
+          Write-Host "SignTool: $($signtool.FullName)"
+          Write-Host "Inf2Cat:  $($inf2cat.FullName)"
+
+          $cert = New-SelfSignedCertificate `
+            -Type CodeSigningCert `
+            -Subject "CN=UHD730 VirtIO Test Driver" `
+            -CertStoreLocation "Cert:\CurrentUser\My" `
+            -KeyExportPolicy Exportable `
+            -KeyLength 2048 `
+            -HashAlgorithm SHA256 `
+            -NotAfter (Get-Date).AddYears(5)
+
+          Write-Host "Certificate thumbprint: $($cert.Thumbprint)"
+
+          New-Item -ItemType Directory -Force artifact | Out-Null
+
+          Export-Certificate `
+            -Cert $cert `
+            -FilePath artifact\UHD730-Test.cer | Out-Null
+
+          # Sign SYS first
+          & $signtool.FullName sign `
+            /v `
+            /fd SHA256 `
+            /sha1 $cert.Thumbprint `
+            $sys.FullName
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "SYS signing failed"
+          }
+
+          # Old catalog is now invalid because SYS changed.
+          if (Test-Path $cat) {
+            Remove-Item $cat -Force
+          }
+
+          # Generate a NEW catalog from the signed SYS + INF
+          & $inf2cat.FullName `
+            /driver:"$dir" `
+            /os:10_X64
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inf2Cat failed"
           }
 
           if (-not (Test-Path $cat)) {
-            throw "Matching viogpudo.cat not found in $dir"
+            throw "New viogpudo.cat not generated"
           }
 
-          New-Item -ItemType Directory -Force artifact
+          # Sign new catalog
+          & $signtool.FullName sign `
+            /v `
+            /fd SHA256 `
+            /sha1 $cert.Thumbprint `
+            $cat
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "CAT signing failed"
+          }
 
           Copy-Item $sys.FullName artifact\viogpudo.sys
           Copy-Item $inf artifact\viogpudo.inf
           Copy-Item $cat artifact\viogpudo.cat
 
+          Write-Host "=== FINAL PACKAGE ==="
           Get-ChildItem artifact
 
-      - name: Verify INF
+      - name: Check UHD730 ID
         shell: powershell
         run: |
-          Get-Content artifact\viogpudo.inf
-
           if (-not (Select-String `
               -Path artifact\viogpudo.inf `
               -Pattern 'PCI\\VEN_8086&DEV_4682')) {
-            throw "8086:4682 missing from INF"
+            throw "PCI 8086:4682 missing from INF"
           }
 
-      - name: Upload driver
+      - name: Upload signed driver
         uses: actions/upload-artifact@v4
         with:
-          name: Intel-UHD730-VirtIO-Win10-x64-fixed
+          name: Intel-UHD730-VirtIO-SIGNED-Win10-x64
           path: artifact
