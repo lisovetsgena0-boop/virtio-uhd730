@@ -9,28 +9,71 @@ var braking = 26.0
 var friction = 8.0
 var steer_speed = 1.6
 var occupied = false
+var spawn_point = Vector3(24, 0.9, 22)
+
 var touch_forward = false
 var touch_back = false
 var touch_left = false
 var touch_right = false
 
+onready var wheels = [
+    get_node_or_null("WheelFL"),
+    get_node_or_null("WheelFR"),
+    get_node_or_null("WheelRL"),
+    get_node_or_null("WheelRR")
+]
+
+func _ready():
+    spawn_point = global_transform.origin
+
 func _physics_process(delta):
+    if global_transform.origin.y < -20.0:
+        respawn(spawn_point)
+
     if not occupied:
         speed = move_toward(speed, 0.0, friction * delta)
-        if abs(speed) > 0.1: move_and_slide(-global_transform.basis.z * speed, Vector3.UP)
+        if abs(speed) > 0.1:
+            move_and_slide(-global_transform.basis.z * speed, Vector3.UP)
+        _animate_wheels(delta)
         return
+
     var forward = Input.is_action_pressed("move_forward") or touch_forward
     var back = Input.is_action_pressed("move_back") or touch_back
     var left = Input.is_action_pressed("move_left") or touch_left
     var right = Input.is_action_pressed("move_right") or touch_right
-    if forward: speed = move_toward(speed, max_speed, acceleration * delta)
-    elif back: speed = move_toward(speed, -reverse_speed, braking * delta)
-    else: speed = move_toward(speed, 0.0, friction * delta)
+
+    if forward:
+        speed = move_toward(speed, max_speed, acceleration * delta)
+    elif back:
+        speed = move_toward(speed, -reverse_speed, braking * delta)
+    else:
+        speed = move_toward(speed, 0.0, friction * delta)
+
     var steer = 0.0
-    if left: steer += 1.0
-    if right: steer -= 1.0
-    if abs(speed) > 0.4: rotation.y += steer * steer_speed * delta * clamp(abs(speed)/8.0,0.25,1.2) * sign(speed)
+    if left:
+        steer += 1.0
+    if right:
+        steer -= 1.0
+    if abs(speed) > 0.4:
+        rotation.y += steer * steer_speed * delta * clamp(abs(speed) / 8.0, 0.25, 1.2) * sign(speed)
+
     move_and_slide(-global_transform.basis.z * speed, Vector3.UP)
+    _animate_wheels(delta, steer)
+
+func _animate_wheels(delta, steer:=0.0):
+    var roll = speed * delta * 0.95
+    for w in wheels:
+        if w:
+            w.rotation.x += roll
+    if wheels[0]:
+        wheels[0].rotation.y = steer * 0.35
+    if wheels[1]:
+        wheels[1].rotation.y = steer * 0.35
+
+func respawn(pos):
+    speed = 0.0
+    rotation = Vector3.ZERO
+    global_transform.origin = pos
 
 func set_touch(action, active):
     match action:
