@@ -42,7 +42,6 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          java -version
           curl -fL --retry 3 -o /tmp/godot.zip "https://github.com/godotengine/godot/releases/download/3.5.3-stable/Godot_v3.5.3-stable_linux_headless.64.zip"
           curl -fL --retry 3 -o /tmp/templates.tpz "https://github.com/godotengine/godot/releases/download/3.5.3-stable/Godot_v3.5.3-stable_export_templates.tpz"
           unzip -q /tmp/godot.zip -d /tmp/godot
@@ -59,7 +58,7 @@ jobs:
           set -euxo pipefail
           mkdir -p "$HOME/.config/godot"
           cat > "$HOME/.config/godot/editor_settings-3.tres" <<EOF
-          [gd_resource format=2]
+          [gd_resource type="EditorSettings" format=2]
 
           [resource]
           export/android/android_sdk_path = "$ANDROID_HOME"
