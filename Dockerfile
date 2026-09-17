@@ -4,7 +4,7 @@ WORKDIR /game
 COPY echo-rivne-src/ /game/
 RUN mkdir -p /game/build \
     && godot --version \
-    && godot -v --path /game --export-debug "Android" /game/build/ECHO_RIVNE.apk \
+    && godot -v --export-debug "Android" /game/build/ECHO_RIVNE.apk \
     && test -s /game/build/ECHO_RIVNE.apk \
     && ls -lh /game/build/ECHO_RIVNE.apk
 
