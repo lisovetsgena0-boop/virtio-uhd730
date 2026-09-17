@@ -1,0 +1,31 @@
+name: Build ECHO RIVNE APK
+
+on:
+  push:
+    branches:
+      - echo-rivne-build
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Godot Android APK in Docker
+        run: |
+          docker build --target build -t echo-rivne-builder .
+          cid=$(docker create echo-rivne-builder)
+          docker cp "$cid:/game/build/ECHO_RIVNE.apk" ./ECHO_RIVNE.apk
+          docker rm "$cid"
+          test -s ECHO_RIVNE.apk
+          ls -lh ECHO_RIVNE.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ECHO_RIVNE_APK
+          path: ECHO_RIVNE.apk
+          if-no-files-found: error
