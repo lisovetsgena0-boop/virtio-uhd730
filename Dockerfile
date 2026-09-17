@@ -1,15 +1,8 @@
 FROM barichello/godot-ci:3.5.2 AS build
 
 WORKDIR /game
-COPY echo-rivne/chunk00.b64 /tmp/chunk00.b64
-COPY echo-rivne/chunk01.b64 /tmp/chunk01.b64
-COPY echo-rivne/chunk02.b64 /tmp/chunk02.b64
-COPY echo-rivne/chunk03.b64 /tmp/chunk03.b64
-COPY echo-rivne/chunk04.b64 /tmp/chunk04.b64
-RUN cat /tmp/chunk00.b64 /tmp/chunk01.b64 /tmp/chunk02.b64 /tmp/chunk03.b64 /tmp/chunk04.b64 > /tmp/echo_rivne_game.b64 \
-    && base64 -d /tmp/echo_rivne_game.b64 > /tmp/echo_rivne_game.zip \
-    && unzip -q /tmp/echo_rivne_game.zip -d /game \
-    && mkdir -p /game/build \
+COPY echo-rivne-src/ /game/
+RUN mkdir -p /game/build \
     && godot --version \
     && godot --verbose --path /game --export-debug "Android" /game/build/ECHO_RIVNE.apk \
     && test -s /game/build/ECHO_RIVNE.apk
