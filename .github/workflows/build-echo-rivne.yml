@@ -9,19 +9,24 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:3.5.2
     timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build Godot Android APK in Docker
+      - name: Export Android APK
+        working-directory: echo-rivne-src
         run: |
-          docker build --target build -t echo-rivne-builder .
-          cid=$(docker create echo-rivne-builder)
-          docker cp "$cid:/game/build/ECHO_RIVNE.apk" ./ECHO_RIVNE.apk
-          docker rm "$cid"
-          test -s ECHO_RIVNE.apk
-          ls -lh ECHO_RIVNE.apk
+          mkdir -p build
+          godot --version
+          godot -v --export-debug "Android" build/ECHO_RIVNE.apk
+          test -s build/ECHO_RIVNE.apk
+          ls -lh build/ECHO_RIVNE.apk
+
+      - name: Copy artifact to workspace root
+        run: cp echo-rivne-src/build/ECHO_RIVNE.apk ./ECHO_RIVNE.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
