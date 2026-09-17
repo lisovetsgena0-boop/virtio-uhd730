@@ -9,24 +9,27 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-    container:
-      image: barichello/godot-ci:3.5.2
     timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Export Android APK
-        working-directory: echo-rivne-src
-        run: |
-          mkdir -p build
-          godot --version
-          godot -v --export-debug "Android" build/ECHO_RIVNE.apk
-          test -s build/ECHO_RIVNE.apk
-          ls -lh build/ECHO_RIVNE.apk
+      - name: Export Android APK with Godot 3.5.3
+        uses: dulvui/godot-android-export@v3.0.0
+        with:
+          working-directory: echo-rivne-src
+          godot-version: 3.5.3
 
-      - name: Copy artifact to workspace root
-        run: cp echo-rivne-src/build/ECHO_RIVNE.apk ./ECHO_RIVNE.apk
+      - name: Find APK
+        shell: bash
+        run: |
+          set -euxo pipefail
+          find echo-rivne-src -type f -name '*.apk' -print
+          APK=$(find echo-rivne-src -type f -name '*.apk' | head -n1)
+          test -n "$APK"
+          test -s "$APK"
+          cp "$APK" ./ECHO_RIVNE.apk
+          ls -lh ./ECHO_RIVNE.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
