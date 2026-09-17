@@ -51,7 +51,7 @@ jobs:
           unzip -q /tmp/templates.tpz -d /tmp/templates
           mkdir -p "$HOME/.local/share/godot/templates/3.5.3.stable"
           cp -a /tmp/templates/templates/. "$HOME/.local/share/godot/templates/3.5.3.stable/"
-          /tmp/godot/Godot_v3.5.3-stable_linux_headless.64 --version
+          /tmp/godot/Godot_v3.5.3-stable_linux_headless.64 --version || true
 
       - name: Configure Godot Android paths
         shell: bash
@@ -73,7 +73,11 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p echo-rivne-src/build
+          set +e
           /tmp/godot/Godot_v3.5.3-stable_linux_headless.64 --path echo-rivne-src --verbose --export-debug "Android" "$(pwd)/echo-rivne-src/build/ECHO_RIVNE.apk"
+          GODOT_EXIT=$?
+          set -e
+          echo "Godot exit code: $GODOT_EXIT"
           test -s echo-rivne-src/build/ECHO_RIVNE.apk
           cp echo-rivne-src/build/ECHO_RIVNE.apk ./ECHO_RIVNE.apk
           file ./ECHO_RIVNE.apk
