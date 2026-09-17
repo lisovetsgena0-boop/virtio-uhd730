@@ -24,6 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
+          java -version
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-31" "build-tools;30.0.3"
           mkdir -p "$HOME/.android"
@@ -41,6 +42,7 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
+          java -version
           curl -fL --retry 3 -o /tmp/godot.zip "https://github.com/godotengine/godot/releases/download/3.5.3-stable/Godot_v3.5.3-stable_linux_headless.64.zip"
           curl -fL --retry 3 -o /tmp/templates.tpz "https://github.com/godotengine/godot/releases/download/3.5.3-stable/Godot_v3.5.3-stable_export_templates.tpz"
           unzip -q /tmp/godot.zip -d /tmp/godot
